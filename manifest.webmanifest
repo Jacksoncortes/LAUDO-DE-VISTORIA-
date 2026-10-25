@@ -1,0 +1,26 @@
+{
+  "id": "./",
+  "name": "CRF — Vistorias",
+  "short_name": "CRF Vistorias",
+  "description": "Formulário digital de vistorias rurais — Amapá Terras",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f0e5b5",
+  "theme_color": "#4b432b",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
