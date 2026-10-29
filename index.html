@@ -140,7 +140,14 @@ function generateWordXml(xml,rec){
   else {p=ps.find(x=>!text(x).trim());if(!p){p=w('p');cell.appendChild(p)}}
   const r=w('r'),pr=w('rPr'),sz=w('sz'),t=w('t');sz.setAttributeNS(ns,'w:val','18');pr.appendChild(sz);r.appendChild(pr);t.setAttribute('xml:space','preserve');t.textContent=(inline?'  ':'')+String(value);r.appendChild(t);p.appendChild(r);
  };
- const put=(t,rx,v,inline=false)=>write(find(t,rx),v,inline);
+ const diagonal=(cell)=>{
+  if(!cell)return;
+  let pr=direct(cell,'tcPr')[0];if(!pr){pr=w('tcPr');cell.insertBefore(pr,cell.firstChild)}
+  let borders=direct(pr,'tcBorders')[0];if(!borders){borders=w('tcBorders');pr.appendChild(borders)}
+  let line=direct(borders,'tl2br')[0];if(!line){line=w('tl2br');borders.appendChild(line)}
+  line.setAttributeNS(ns,'w:val','single');line.setAttributeNS(ns,'w:sz','8');line.setAttributeNS(ns,'w:color','707070');
+ };
+ const put=(t,rx,v,inline=false)=>write(find(t,rx),String(v??'').trim()?v:'—',inline);
  const q1={'1.1':/Nome do \(Requerente\)/,'1.2':/Conhecido por/,'1.3':/1\.3\. CPF/,'1.4':/1\.4\. Tipo/,'1.5':/1\.5\. Número/,'1.6':/1\.6\. Profissão/,'1.7':/1\.7\. Natural/,'1.8':/1\.8\. Órgão/,'1.9':/1\.9\. Estado/,'1.10':/1\.10\. Fone/,'1.11':/1\.11\. Endereço/,'1.12':/1\.12\. Cônjuge/,'1.13':/1\.13\. CPF/,'1.14':/1\.14\. Tipo/,'1.15':/1\.15\. Número/,'1.16':/1\.16\. Natural/,'1.17':/1\.17\. Faz/};
  put(tables[0],/Nº do Processo/,f.processo);put(tables[0],/Portaria/,f.portaria);put(tables[0],/Nº Laudo/,f.laudo);
  Object.entries(q1).forEach(([k,rx])=>put(tables[1],rx,f[k],k==='1.17'));
@@ -155,11 +162,26 @@ function generateWordXml(xml,rec){
  put(tables[2],/Qual objetivo/,f['2.20.obj'],true);
  for(let i=1;i<=6;i++)put(tables[3],new RegExp('3\\.'+i+'\\.'),i===4?dateBR(f['3.4']):f['3.'+i],i===4||i===5);
  for(let i=1;i<=4;i++)put(tables[4],new RegExp('4\\.'+i+'\\.'),i===2?formatAreaHa(f['4.2']):f['4.'+i],i===1||i===2);
- const dataRows=(tableIndex,key,props)=>{const t=tables[tableIndex];if(!t)return;const rr=direct(t,'tr').slice(1);(rows[key]||[]).slice(0,rr.length).forEach((item,i)=>{const cc=rowCells(rr[i]);props.forEach((prop,j)=>write(cc[j],item[prop]))})};
+ const dataRows=(tableIndex,key,props)=>{const t=tables[tableIndex];if(!t)return;const rr=direct(t,'tr').slice(1);rr.forEach((r,i)=>{const cc=rowCells(r),item=(rows[key]||[])[i]||{};props.forEach((prop,j)=>{if(cc[j])write(cc[j],String(item[prop]??'').trim()?item[prop]:'—')})})};
  dataRows(5,'culturas',['nome','area','und','preco','receita']);dataRows(6,'extrativismo',['atividade','area','producao','preco','receita']);dataRows(7,'construcoes',['especificacao','und','dimensao','quant','conservacao']);dataRows(8,'pecuarias',['especificacao','und','quant','conservacao']);dataRows(9,'equipamentos',['especificacao','und','quant','conservacao']);
- const pr=direct(tables[4],'tr').slice(4);(rows.pontos||[]).slice(0,pr.length).forEach((pt,i)=>{const cc=rowCells(pr[i]);write(cc[0],pt.local);write(cc[1],pt.lat);write(cc[cc.length-1],pt.lon)});
+ const pr=direct(tables[4],'tr').slice(4);pr.forEach((r,i)=>{const pt=(rows.pontos||[])[i]||{},cc=rowCells(r);if(cc.length>=3){write(cc[0],String(pt.local||'').trim()?pt.local:'—');write(cc[1],String(pt.lat||'').trim()?pt.lat:'—');write(cc[cc.length-1],String(pt.lon||'').trim()?pt.lon:'—')}});
  write(cells(tables[10])[0],f['7.obs']);
+ // Inutilizar com diagonal somente áreas de texto que não foram preenchidas.
+ if(!String(f['7.obs']||'').trim())diagonal(cells(tables[10])[0]);
+ // Quadro 8: reservado ao parecer conclusivo, normalmente não preenchido no app.
+ if(!String(f['8.parecer']||'').trim())diagonal(cells(tables[11])[0]);
+ else write(cells(tables[11])[0],f['8.parecer']);
+
  const tr=direct(tables[12],'tr');(rows.tecnicos||[]).slice(0,2).forEach((tech,i)=>{const first=rowCells(tr[i*3]),cpf=rowCells(tr[i*3+1]),dt=rowCells(tr[i*3+2]);write(first[0],tech.nome);write(first[first.length-1],tech.registro);write(cpf[0],tech.cpf||tech.matricula);write(dt[0],dateBR(f.data))});
+ // Quadro 9: inutilizar a identificação do técnico não utilizado.
+ for(let i=0;i<2;i++){
+  const tech=(rows.tecnicos||[])[i];
+  if(tech && [tech.nome,tech.registro,tech.cpf,tech.matricula].some(v=>String(v||'').trim()))continue;
+  const rr=direct(tables[12],'tr');
+  for(let j=i*3;j<Math.min(i*3+3,rr.length);j++){
+   for(const cell of rowCells(rr[j]))diagonal(cell);
+  }
+ }
  return new XMLSerializer().serializeToString(doc)
 }
 
